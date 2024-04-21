@@ -100,15 +100,38 @@ def write_trees(trees, training, validation, test, out_dir, user_map):
         json.dump([edges_data[cid] for cid in test], f)
 
 
+def preprocess_fold(data_name, fold_num, train_set, val_set, test_set, graph, user_map):
+    out_dir = f'data/{data_name}/{data_name}-{fold_num}'
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
+    print(f"=== fold #{fold_num} ===")
+    print(f'training length: {len(train_set)}')
+    print(f'validation length: {len(val_set)}')
+    print(f'test length: {len(test_set)}')
+
+    print("writing graph ...")
+    relabel_graph(graph, f'{out_dir}/graph.txt', user_map)
+
+    with open(f'data/{data_name}/trees.json') as f:
+        trees = json.load(f)
+
+    print("writing trees to files ...")
+    write_trees(trees, train_set, val_set, test_set, out_dir, user_map)
+
+    print("writing cascades to files ...")
+    write_cascades(train_set, trees, f'{out_dir}/train.txt', user_map)
+    write_cascades(val_set, trees, f'{out_dir}/val.txt', user_map)
+    write_cascades(test_set, trees, f'{out_dir}/test.txt', user_map)
+
+
 def main():
     parser = argparse.ArgumentParser('Process data of `diffusion` code in order to fed into `Inf-VAE`')
     parser.add_argument('-d', '--data', required=True, help="data directory name")
-    parser.add_argument('-f', '--folds', type=int, default=3, required=True, help="number of cross-validation folds")
     parser.add_argument('-m', '--max_nodes', type=int, required=False, help="maximum number of nodes")
     args = parser.parse_args()
 
     data_name = args.data
-    folds = args.folds
 
     with open(f'data/{data_name}/graph_info.json') as f:
         graph_info = json.load(f)
@@ -116,44 +139,30 @@ def main():
     with open(f'data/{data_name}/samples.json') as f:
         samples = json.load(f)
 
+    # Find the graph related to all trining data.
+    all_train_graph_name = None
+    for graph_name in graph_info:
+        if set(graph_info[graph_name]) == set(samples['training']):
+            all_train_graph_name = graph_name
+            break
+    assert all_train_graph_name is not None
+
+    # Read the graph file.
     graph = DiGraph()
-    # graph1.txt: directed graph of training and validation
-    graph: Graph = read_adjlist(f'data/{data_name}/graph1.txt', create_using=graph).to_undirected()
+    graph: Graph = read_adjlist(f'data/{data_name}/{all_train_graph_name}.txt', create_using=graph).to_undirected()
     if args.max_nodes:
         limit_nodes(graph, args.max_nodes)
-    user_map = create_users_map(graph)
+    user_map = create_users_map(graph)  # Map mongodb user ids to int
 
-    for fold in range(1, folds + 1):
-        preprocess_fold(data_name, fold, graph, graph_info, samples, user_map)
-
-
-def preprocess_fold(data_name, fold, graph, graph_info, samples, user_map):
-    out_dir = f'data/{data_name}/{data_name}-{fold}'
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
-
-    training = graph_info[f'graph{fold + 1}']
-    validation = list(set(samples['training']) - set(training))
-    test = samples['test']
-
-    print(f"=== fold #{fold} ===")
-    print(f'training length: {len(training)}')
-    print(f'validation length: {len(validation)}')
-    print(f'test length: {len(test)}')
-
-    with open(f'data/{data_name}/trees.json') as f:
-        trees = json.load(f)
-
-    print("writing trees to files ...")
-    write_trees(trees, training, validation, test, out_dir, user_map)
-
-    print("writing cascades to files ...")
-    write_cascades(training, trees, f'{out_dir}/train.txt', user_map)
-    write_cascades(validation, trees, f'{out_dir}/val.txt', user_map)
-    write_cascades(test, trees, f'{out_dir}/test.txt', user_map)
-
-    print("writing graph ...")
-    relabel_graph(graph, f'{out_dir}/graph.txt', user_map)
+    fold_num = 0
+    for graph_name in graph_info:
+        ratio = len(graph_info[graph_name]) / len(samples["training"])
+        if abs(ratio - 2 / 3) < .1:  # It is training set of a cross-validation fold
+            fold_num += 1
+            train_set = graph_info[graph_name]
+            val_set = list(set(samples['training']) - set(train_set))
+            test_set = samples['test']
+            preprocess_fold(data_name, fold_num, train_set, val_set, test_set, graph, user_map)
 
 
 if __name__ == '__main__':
