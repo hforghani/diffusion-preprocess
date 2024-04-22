@@ -43,9 +43,8 @@ def limit_nodes(graph: Graph, max_nodes: int):
 
 
 def relabel_graph(graph, new_graph_path, users_map):
-    graph = relabel_nodes(graph, users_map)
     with open(new_graph_path, "w") as f:
-        f.write(f"{len(users_map)} {graph.number_of_edges()}\n" +
+        f.write(f"{graph.number_of_nodes()} {graph.number_of_edges()}\n" +
                 "\n".join(f"{u} {v}" for u, v in graph.edges()))
     return graph
 
@@ -139,7 +138,7 @@ def main():
     with open(f'data/{data_name}/samples.json') as f:
         samples = json.load(f)
 
-    # Find the graph related to all trining data.
+    # Find the graph related to all training data.
     all_train_graph_name = None
     for graph_name in graph_info:
         if set(graph_info[graph_name]) == set(samples['training']):
@@ -153,6 +152,7 @@ def main():
     if args.max_nodes:
         limit_nodes(graph, args.max_nodes)
     user_map = create_users_map(graph)  # Map mongodb user ids to int
+    graph = relabel_nodes(graph, user_map)
 
     fold_num = 0
     for graph_name in graph_info:
