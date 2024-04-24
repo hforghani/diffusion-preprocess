@@ -42,7 +42,7 @@ def limit_nodes(graph: Graph, max_nodes: int):
         graph.remove_nodes_from(nodes[:graph.number_of_nodes() - max_nodes])
 
 
-def relabel_graph(graph, new_graph_path, users_map):
+def write_graph(graph, new_graph_path):
     with open(new_graph_path, "w") as f:
         f.write(f"{graph.number_of_nodes()} {graph.number_of_edges()}\n" +
                 "\n".join(f"{u} {v}" for u, v in graph.edges()))
@@ -110,7 +110,7 @@ def preprocess_fold(data_name, fold_num, train_set, val_set, test_set, graph, us
     print(f'test length: {len(test_set)}')
 
     print("writing graph ...")
-    relabel_graph(graph, f'{out_dir}/graph.txt', user_map)
+    write_graph(graph, f'{out_dir}/graph.txt')
 
     with open(f'data/{data_name}/trees.json') as f:
         trees = json.load(f)
