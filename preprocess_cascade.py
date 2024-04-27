@@ -3,7 +3,7 @@ import json
 import os
 from datetime import datetime
 
-from networkx import Graph, DiGraph, read_adjlist, relabel_nodes
+from networkx import Graph, DiGraph, read_adjlist, relabel_nodes, write_adjlist
 from typing import List, Dict, Tuple
 
 
@@ -17,6 +17,7 @@ def write_cascades(cascade_ids: List[str],
             nodes = []
             for root in roots:
                 nodes.extend(get_tree_nodes(root, user_map))
+            # assert "train" not in file_name or len(nodes) <= 6445
             nodes.sort(key=lambda n: n["datetime"])
             times = [node["datetime"] for node in nodes]
             times = [(dt - times[0]).total_seconds() for dt in times]
@@ -147,12 +148,15 @@ def main():
     assert all_train_graph_name is not None
 
     # Read the graph file.
-    graph = DiGraph()
-    graph: Graph = read_adjlist(f'data/{data_name}/{all_train_graph_name}.txt', create_using=graph).to_undirected()
+    graph_dir = DiGraph()
+    graph_dir = read_adjlist(f'data/{data_name}/{all_train_graph_name}.txt', create_using=graph_dir)
+    graph: Graph = graph_dir.to_undirected()
     if args.max_nodes:
         limit_nodes(graph, args.max_nodes)
     user_map = create_users_map(graph)  # Map mongodb user ids to int
     graph = relabel_nodes(graph, user_map)
+    graph_dir = relabel_nodes(graph_dir, user_map)
+    write_adjlist(graph_dir, f"data/{data_name}/graph-dir.txt")
 
     fold_num = 0
     for graph_name in graph_info:
