@@ -1,8 +1,9 @@
 import argparse
 import json
-import logging
 import os
 import re
+import warnings
+
 import numpy as np
 
 from networkx import DiGraph, read_adjlist, relabel_nodes
@@ -11,16 +12,33 @@ from metric import Metric
 from roc import report_and_save_roc
 
 
-def read_results(content, data_dir):
-    with open(os.path.join(data_dir, "test.txt")) as f:
-        test_count = len(f.readlines())
-
+def read_results(lines, data_dir):
     with open(os.path.join(data_dir, "graph.txt")) as f:
         num_nodes = int(f.readline().split()[0])
 
-    # Read inputs and targets from the log file.
-    inputs = re.findall(r"(\d+)\s+input: \[(.+)\]", content)
-    targets = re.findall(r"\s+target: \[(.+)\]", content)
+    # Read the log file.
+    inputs, targets = [], []  # input and target of test set
+    epoch_inputs, epoch_outputs, epoch_targets = [], [], []  # inputs, targets and predicted outputs for all epochs
+    for line in lines:
+        match = re.match(r"(\d+)\s+input: (\[.+\])", line)
+        if match:
+            inputs.append(match.groups())
+        else:
+            match = re.match(r"\s+target: (\[.+\])", line)
+            if match:
+                targets.append(match.groups())
+            else:
+                match = re.match(r"inputs\[(\d+)\] = (\[ .+ \])", line)
+                if match:
+                    epoch_inputs.append(match.groups())
+                else:
+                    match = re.match(r"output_filter\[(\d+)\] = (\[ .+ \])", line)
+                    if match:
+                        epoch_outputs.append(match.groups())
+                    else:
+                        match = re.match(r"targets\[(\d+)\] = (\[ .+ \])", line)
+                        if match:
+                            epoch_targets.append(match.groups())
 
     # Get data of the last run.
     indexes = [item[0] for item in inputs]
@@ -29,33 +47,22 @@ def read_results(content, data_dir):
     targets = targets[last_zero:]
     results = [
         {
-            "input": [int(node) for node in inputs[i][1].split(", ")],
-            "target": [int(node) for node in targets[i].split(", ")],
+            "input": [int(node) for node in eval(inputs[i][1])],
+            "target": [int(node) for node in eval(targets[i][0])],
         }
-        for i in range(test_count)
+        for i in range(len(inputs))
     ]
+    test_count = len(results)
 
-    # Read epoch results from log file.
-    epoch_inputs = re.findall(r"inputs\[(\d+)\] = \[ (.+) \]", content)
-    epoch_outputs = re.findall(r"output_filter\[(\d+)\] = \[ (.+) \]", content)
-    epoch_targets = re.findall(r"targets\[(\d+)\] = \[ (.+) \]", content)
-    # rel_scores = re.findall(r"output_relevance_score\[(\d+)\] = (\S+)", content)
-
-    # Get the result of the last epoch.
-    indexes = [item[0] for item in epoch_inputs]
-    last_zero = len(indexes) - indexes[::-1].index("0") - 1
-    epoch_inputs = epoch_inputs[last_zero:]
-    epoch_outputs = epoch_outputs[last_zero:]
-    epoch_targets = epoch_targets[last_zero:]
-    # rel_scores = rel_scores[last_zero:]
+    # Peek 2 * test_count last results in order to ensure cover all test examples.
+    # `epoch_results` are in reverse order.
     epoch_results = [
         {
-            "input": [int(node) for node in epoch_inputs[i][1].split(", ") if node != str(num_nodes)],
-            "output": [int(node) for node in epoch_outputs[i][1].split(", ") if node != "-1"],
-            "target": [int(node) for node in epoch_targets[i][1].split(", ") if node != "-1"],
-            # "rel_score": [int(d) if d in "01" else -1 for d in rel_scores[i][1]],
+            "input": [int(node) for node in eval(epoch_inputs[-i][1]) if node != num_nodes],
+            "output": [int(node) for node in eval(epoch_outputs[-i][1]) if node != -1],
+            "target": [int(node) for node in eval(epoch_targets[-i][1]) if node != -1],
         }
-        for i in range(len(epoch_inputs))
+        for i in range(1, 2 * test_count)
     ]
 
     # Since the order of epoch results is not same as the original test set, find the outputs by comparing inputs
@@ -67,7 +74,7 @@ def read_results(content, data_dir):
                 res["output"] = epoch_res["output"]
                 break
         else:
-            logging.warning("no equal input and target found")
+            warnings.warn("no equal input and target found")
             results_to_remove.append(res)
 
     # Remove the results for which the inputs and targets have not been found.
@@ -142,11 +149,11 @@ def main():
     args = parser.parse_args()
 
     with open(args.log_file) as f:
-        content = f.read()
+        lines = f.readlines()
 
     data_dir = os.path.join("data", args.data, f"{args.data}-{args.fold}")
     print("reading log file ...")
-    results = read_results(content, data_dir)
+    results = read_results(lines, data_dir)
     print("predicting edges and evaluating ...")
     evals = predict_edges(results, args.data, args.fold)
     report_evals(evals, args.data)
