@@ -32,7 +32,7 @@ def read_results(lines, data_dir):
                 if match:
                     epoch_inputs.append(match.groups())
                 else:
-                    match = re.match(r"output_filter\[(\d+)\] = (\[ .+ \])", line)
+                    match = re.match(r"outputs\[(\d+)\] = (\[ .+ \])", line)
                     if match:
                         epoch_outputs.append(match.groups())
                     else:
@@ -95,30 +95,33 @@ def predict_edges(results, data_name, fold_num):
         trees = json.load(f)
 
     for i in range(len(results)):
+        # for i in range(10):
+        print(f"evaluating cascade {i} ...")
         res = results[i]
         target_edges = {tuple(edge) for edge in trees[i]}
         active_nodes = res["input"].copy()
-        successors = {node: list(graph.successors(node)) if node in graph else [] for node in active_nodes}
+        successors = {node: set(graph.successors(node)) if node in graph else set() for node in active_nodes}
         edges = []
         res_eval = []
 
         # At each iteration evaluate the result of top `k` output.
         for k in range(len(res["output"])):
             node = res["output"][k]
+            if node not in active_nodes:
+                # Find the parent node and add the new edge.
+                for active_node in successors:
+                    if node in successors[active_node]:
+                        edges.append((active_node, node))
+                        active_nodes.append(node)
+                        successors[node] = set(graph.successors(node))
+                        break
 
-            # Find the parent node and add the new edge.
-            for active_node in successors:
-                if node in successors[active_node]:
-                    edges.append((active_node, node))
-                    active_nodes.append(node)
-                    successors[node] = list(graph.successors(node))
-                    break
-
-            # Evaluate the result of top k output.
-            initial_edges = set()  # Since initial depth = 0
-            ref_set = set(graph.edges()) | set(target_edges) - initial_edges
-            metric = Metric(edges, target_edges, ref_set)
-            res_eval.append(metric)
+            if k % 10 == 0:
+                # Evaluate the result of top k output.
+                initial_edges = set()  # Since initial depth = 0
+                ref_set = set(graph.edges()) | target_edges - initial_edges
+                metric = Metric(edges, target_edges, ref_set)
+                res_eval.append(metric)
 
         evaluations.append(res_eval)
 
@@ -136,8 +139,8 @@ def report_evals(evals, data_name):
     max_f1 = np.max(np.array(mean_f1))
     print(f"Max F1 for edges: {max_f1}")
 
-    fprs = [np.array([eval[k]["fpr"] for eval in evals]).mean() for k in range(max_k)]
-    tprs = [np.array([eval[k]["tpr"] for eval in evals]).mean() for k in range(max_k)]
+    fprs = [np.array([cas_eval[k]["fpr"] for cas_eval in evals]).mean() for k in range(max_k)]
+    tprs = [np.array([cas_eval[k]["tpr"] for cas_eval in evals]).mean() for k in range(max_k)]
     report_and_save_roc(fprs, tprs, "infvae", "edges", data_name)
 
 
