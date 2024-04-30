@@ -87,11 +87,11 @@ def read_results(lines, data_dir):
 
 def predict_edges(results, data_name, fold_num):
     graph = DiGraph()
-    graph = read_adjlist(os.path.join("data", data_name, "graph-dir.txt"), create_using=graph)
+    graph = read_adjlist(os.path.join("data/diffusion", data_name, "graph-dir.txt"), create_using=graph)
     graph = relabel_nodes(graph, {node: int(node) for node in graph})
     evaluations = []
 
-    with open(os.path.join("data", data_name, f"{data_name}-{fold_num}", "trees-test.json")) as f:
+    with open(os.path.join("data/inf-vae", f"{data_name}-{fold_num}", "trees-test.json")) as f:
         trees = json.load(f)
 
     for i in range(len(results)):
@@ -154,7 +154,7 @@ def main():
     with open(args.log_file) as f:
         lines = f.readlines()
 
-    data_dir = os.path.join("data", args.data, f"{args.data}-{args.fold}")
+    data_dir = os.path.join("data/inf-vae", f"{args.data}-{args.fold}")
     print("reading log file ...")
     results = read_results(lines, data_dir)
     print("predicting edges and evaluating ...")

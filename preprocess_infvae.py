@@ -101,7 +101,7 @@ def write_trees(trees, training, validation, test, out_dir, user_map):
 
 
 def preprocess_fold(data_name, fold_num, train_set, val_set, test_set, graph, user_map):
-    out_dir = f'data/{data_name}/{data_name}-{fold_num}'
+    out_dir = f'data/inf-vae/{data_name}-{fold_num}'
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
@@ -113,7 +113,7 @@ def preprocess_fold(data_name, fold_num, train_set, val_set, test_set, graph, us
     print("writing graph ...")
     write_graph(graph, f'{out_dir}/graph.txt')
 
-    with open(f'data/{data_name}/trees.json') as f:
+    with open(f'data/diffusion/{data_name}/trees.json') as f:
         trees = json.load(f)
 
     print("writing trees to files ...")
@@ -133,10 +133,10 @@ def main():
 
     data_name = args.data
 
-    with open(f'data/{data_name}/graph_info.json') as f:
+    with open(f'data/diffusion/{data_name}/graph_info.json') as f:
         graph_info = json.load(f)
 
-    with open(f'data/{data_name}/samples.json') as f:
+    with open(f'data/diffusion/{data_name}/samples.json') as f:
         samples = json.load(f)
 
     # Find the graph related to all training data.
@@ -149,14 +149,14 @@ def main():
 
     # Read the graph file.
     graph_dir = DiGraph()
-    graph_dir = read_adjlist(f'data/{data_name}/{all_train_graph_name}.txt', create_using=graph_dir)
+    graph_dir = read_adjlist(f'data/diffusion/{data_name}/{all_train_graph_name}.txt', create_using=graph_dir)
     graph: Graph = graph_dir.to_undirected()
     if args.max_nodes:
         limit_nodes(graph, args.max_nodes)
     user_map = create_users_map(graph)  # Map mongodb user ids to int
     graph = relabel_nodes(graph, user_map)
     graph_dir = relabel_nodes(graph_dir, user_map)
-    write_adjlist(graph_dir, f"data/{data_name}/graph-dir.txt")
+    write_adjlist(graph_dir, f"data/diffusion/{data_name}/graph-dir.txt")
 
     fold_num = 0
     for graph_name in graph_info:
