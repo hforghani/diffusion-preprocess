@@ -141,7 +141,7 @@ def report_evals(evals, data_name):
 
     fprs = [np.array([cas_eval[k]["fpr"] for cas_eval in evals]).mean() for k in range(max_k)]
     tprs = [np.array([cas_eval[k]["tpr"] for cas_eval in evals]).mean() for k in range(max_k)]
-    report_and_save_roc(fprs, tprs, "infvae", "edges", data_name)
+    report_and_save_roc(fprs, tprs, "infvae", "edges", data_name, "data/inf-vae")
 
 
 def main():

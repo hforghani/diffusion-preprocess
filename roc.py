@@ -24,7 +24,7 @@ def prepare_roc(fprs, tprs) -> Tuple[np.array, np.array]:
     return fprs, tprs
 
 
-def report_and_save_roc(fpr_list: list, tpr_list: list, method: str, criterion: str, dataset: str):
+def report_and_save_roc(fpr_list: list, tpr_list: list, method: str, criterion: str, dataset: str, results_path: str):
     """
     Save ROC plot as png and FPR-TPR values as json.
     """
@@ -36,9 +36,6 @@ def report_and_save_roc(fpr_list: list, tpr_list: list, method: str, criterion: 
     pyplot.axis((0, 1, 0, 1))
     pyplot.xlabel("fpr")
     pyplot.ylabel("tpr")
-    results_path = 'results'
-    if not os.path.exists(results_path):
-        os.mkdir(results_path)
     base_name = f'{dataset}-{method}-{criterion}-roc-{datetime.datetime.now()}'.replace(" ", "-")
     pyplot.savefig(os.path.join(results_path, f'{base_name}.png'))
     # pyplot.show()
