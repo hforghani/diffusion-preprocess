@@ -1,3 +1,9 @@
+from typing import List
+
+import numpy as np
+
+from roc import report_and_save_roc
+
 METRICS = [
     # "precision",
     # "recall",
@@ -92,3 +98,19 @@ class Metric(object):
 
     def __setitem__(self, key, value):
         self.metrics[key] = value
+
+
+def report_evals(evals: List[List[Metric]], method: str, criterion: str, data_name: str, results_path: str):
+    max_k = len(evals[0])
+    mean_f1 = []
+
+    for k in range(max_k):
+        f1s_k = [eval[k]["f1"] for eval in evals]
+        mean_f1.append(np.array(f1s_k).mean())
+
+    max_f1 = np.max(np.array(mean_f1))
+    print(f"Max F1 for edges: {max_f1}")
+
+    fprs = [np.array([cas_eval[k]["fpr"] for cas_eval in evals]).mean() for k in range(max_k)]
+    tprs = [np.array([cas_eval[k]["tpr"] for cas_eval in evals]).mean() for k in range(max_k)]
+    report_and_save_roc(fprs, tprs, method, criterion, data_name, results_path)
