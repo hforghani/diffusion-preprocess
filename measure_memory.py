@@ -10,16 +10,24 @@ REPORT_FREQ = 10
 
 def main():
     parser = argparse.ArgumentParser('Measure average memory usage of the process given')
-    parser.add_argument('-p', '--pid', type=int, required=True, help="process id")
+    parser.add_argument('-c', '--command', required=True, help="part of process command")
     args = parser.parse_args()
+
+    proc_iter = psutil.process_iter(attrs=["pid", "cmdline"])
+    processes = [p for p in proc_iter if
+                 args.command in " ".join(p.info["cmdline"]) and "measure_memory" not in " ".join(p.info["cmdline"])]
+
+    for p in processes:
+        print(p.info["cmdline"])
 
     averages = []
     times = []
-    print(f"Reporting mean memory of pid {args.pid} per {REPORT_FREQ} s ...")
+    print(f"Reporting mean memory of {len(processes)} process(es) containing '{args.command}' per {REPORT_FREQ} s ...")
 
     while True:
         try:
-            mem = psutil.Process(args.pid).memory_info().rss / 1024 ** 2
+            mem = sum(p.memory_info().rss / 1024 ** 2 for p in processes)
+            # mem = psutil.Process(args.pid).memory_info().rss / 1024 ** 2
         except psutil.NoSuchProcess:
             print("the process finished")
             break
