@@ -18,7 +18,11 @@ def main():
     print(f"Reporting mean memory of pid {args.pid} per {REPORT_FREQ} s ...")
 
     while True:
-        mem = psutil.Process(args.pid).memory_info().rss / 1024 ** 2
+        try:
+            mem = psutil.Process(args.pid).memory_info().rss / 1024 ** 2
+        except psutil.NoSuchProcess:
+            print("the process finished")
+            break
         times.append(mem)
         if len(times) == AVERAGING_FREQ:
             mean = float(np.mean(np.array(times)))
@@ -26,7 +30,7 @@ def main():
             times = []
         if len(times) % REPORT_FREQ == 0:
             mean = (sum(times) + AVERAGING_FREQ * sum(averages)) / (len(times) + AVERAGING_FREQ * len(averages))
-            print(f"average = {mean}")
+            print(f"average = {mean} MB")
         time.sleep(1)
 
 
