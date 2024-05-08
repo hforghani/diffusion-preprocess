@@ -100,6 +100,10 @@ class Metric(object):
         self.metrics[key] = value
 
 
+    def __repr__(self):
+        return repr(self.metrics)
+
+
 def report_evals(evals: List[List[Metric]], method: str, criterion: str, data_name: str, results_path: str):
     max_k = len(evals[0])
     mean_f1 = []

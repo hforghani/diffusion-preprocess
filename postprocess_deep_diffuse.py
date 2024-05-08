@@ -23,7 +23,7 @@ def read_results(log_file, data_dir):
     sequences = [[seen_nodes[index] for index in row] for row in results["sequences"]]
     targets = [[seen_nodes[index] for index in row] for row in results["targets"]]
     outputs = [[seen_nodes[index] for index in row] for row in results["outputs"]]
-    results = [Result(seq, target, out) for seq, target, out in zip(sequences, targets, outputs)]
+    results = [Result(seq, out, target) for seq, target, out in zip(sequences, targets, outputs)]
     return results
 
 

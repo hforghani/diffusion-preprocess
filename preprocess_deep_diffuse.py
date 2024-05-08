@@ -3,7 +3,7 @@ import json
 import os.path
 import shutil
 
-from networkx import read_adjlist
+from networkx import read_adjlist, Graph
 
 
 def add_first_time(content):
@@ -58,11 +58,14 @@ def preprocess(data_name):
     shutil.copyfile(f"{infvae_dir}/graph.txt", f"{deep_diffuse_dir}/graph.txt")
     shutil.copyfile(f"{infvae_dir}/trees-test.json", f"{deep_diffuse_dir}/trees-test.json")
 
-    graph = read_adjlist(f"{infvae_dir}/graph.txt")
+    graph: Graph = read_adjlist(f"{infvae_dir}/graph.txt")
     graph.add_nodes_from(read_nodes(test_content))
     graph.add_nodes_from(read_nodes(val_content))
+    # Put a fake node at the beginning in order to neglect index 0 due to a bug in deep-diffuse code.
+    nodes = [str(graph.number_of_nodes())] + list(graph.nodes())
+
     with open(f"{deep_diffuse_dir}/seen_nodes.txt", "w") as f:
-        f.write("\n".join(graph.nodes()))
+        f.write("\n".join(nodes))
 
     write_seed_counts(data_name, deep_diffuse_dir)
 
