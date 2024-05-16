@@ -4,7 +4,7 @@ import os
 
 from metric import report_evals
 from models import Result
-from prediction import predict_edges
+from prediction import predict
 
 
 def load_seen_nodes(data_path):
@@ -39,8 +39,11 @@ def main():
     results = read_results(args.log_file, data_dir)
     print("predicting edges and evaluating ...")
     data_path = f"data/deep-diffuse/{args.data}"
-    evals = predict_edges(results, args.data, data_path, eval_freq=args.frequency)
-    report_evals(evals, "deepdiffuse", "edges", args.data, "results/deep-diffuse")
+    node_evals, edge_evals = predict(results, args.data, data_path, eval_freq=args.frequency)
+    print("\n=== Nodes ===\n")
+    report_evals(node_evals, "deepdiffuse", "nodes", args.data, "results/deep-diffuse")
+    print("\n=== Edges ===\n")
+    report_evals(edge_evals, "deepdiffuse", "edges", args.data, "results/deep-diffuse")
 
 
 if __name__ == '__main__':

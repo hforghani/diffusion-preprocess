@@ -118,3 +118,8 @@ def report_evals(evals: List[List[Metric]], method: str, criterion: str, data_na
     fprs = [np.array([cas_eval[k]["fpr"] for cas_eval in evals]).mean() for k in range(max_k)]
     tprs = [np.array([cas_eval[k]["tpr"] for cas_eval in evals]).mean() for k in range(max_k)]
     report_and_save_roc(fprs, tprs, method, criterion, data_name, results_path)
+
+    # Report f1 values for each cascade.
+    print("F1 values for each cascade:")
+    f1_values = [float(np.max(np.array([metric["f1"] for metric in cas_eval]))) for cas_eval in evals]
+    print(f1_values)

@@ -54,7 +54,8 @@ def get_tree_edges(trees):
 #         raise ValueError(f"cascade not found")
 
 
-def predict_edges(results: List[Result], data_name: str, data_path: str, eval_freq=10) -> List[List[Metric]]:
+def predict(results: List[Result], data_name: str, data_path: str, eval_freq=10) -> Tuple[
+    List[List[Metric]], List[List[Metric]]]:
     """
     For each result in `results` starts with initial nodes of `result.inputs`, add nodes in `result.outputs` one
     by one and put the best matching edge. At each node adding, evaluates the current result. Finally, for each
@@ -63,7 +64,8 @@ def predict_edges(results: List[Result], data_name: str, data_path: str, eval_fr
     graph = DiGraph()
     graph = read_adjlist(os.path.join("data/diffusion", data_name, "graph-dir.txt"), create_using=graph)
     graph = relabel_nodes(graph, {node: int(node) for node in graph})
-    evaluations = []
+    all_edge_eval = []
+    all_node_eval = []
 
     with open(os.path.join(data_path, "trees-test.json")) as f:
         trees = json.load(f)
@@ -77,11 +79,13 @@ def predict_edges(results: List[Result], data_name: str, data_path: str, eval_fr
         res = results[i]
         target_edges = {tuple(edge) for edge in trees[i]}
         initial_edges = set()  # Since initial depth = 0
-        ref_set = set(graph.edges()) | target_edges - initial_edges
+        edge_ref_set = set(graph.edges()) | target_edges - initial_edges
+        node_ref_set = set(graph.nodes()) | set(res.targets) - set(res.inputs)
         active_nodes = res.inputs.copy()
         successors = {node: set(graph.successors(node)) if node in graph else set() for node in active_nodes}
         edges = []
-        res_eval = []
+        edge_eval = []
+        node_evals = []
 
         # At each iteration evaluate the result of top `k` output.
         for k in range(len(res.outputs)):
@@ -97,9 +101,12 @@ def predict_edges(results: List[Result], data_name: str, data_path: str, eval_fr
 
             if k % eval_freq == 0:
                 # Evaluate the result of the top k output.
-                metric = Metric(edges, target_edges, ref_set)
-                res_eval.append(metric)
+                edge_metric = Metric(edges, target_edges, edge_ref_set)
+                node_metric = Metric(set(active_nodes) - set(res.inputs), res.targets, node_ref_set)
+                edge_eval.append(edge_metric)
+                node_evals.append(node_metric)
 
-        evaluations.append(res_eval)
+        all_edge_eval.append(edge_eval)
+        all_node_eval.append(node_evals)
 
-    return evaluations
+    return all_node_eval, all_edge_eval

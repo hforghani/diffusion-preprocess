@@ -5,7 +5,7 @@ import warnings
 
 from metric import report_evals
 from models import Result
-from prediction import predict_edges
+from prediction import predict
 
 
 def read_results(lines, data_dir):
@@ -98,8 +98,11 @@ def main():
     results = read_results(lines, data_dir)
     print("predicting edges and evaluating ...")
     data_path = os.path.join("data/inf-vae", f"{args.data}-{args.fold}")
-    evals = predict_edges(results, args.data, data_path, eval_freq=args.frequency)
-    report_evals(evals, "infvae", "edges", args.data, "results/inf-vae")
+    node_evals, edge_evals = predict(results, args.data, data_path, eval_freq=args.frequency)
+    print("\n=== Nodes ===\n")
+    report_evals(node_evals, "infvae", "nodes", args.data, "results/inf-vae")
+    print("\n=== Edges ===\n")
+    report_evals(edge_evals, "infvae", "edges", args.data, "results/inf-vae")
 
 
 if __name__ == '__main__':
