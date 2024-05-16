@@ -99,17 +99,17 @@ class Metric(object):
     def __setitem__(self, key, value):
         self.metrics[key] = value
 
-
     def __repr__(self):
         return repr(self.metrics)
 
 
 def report_evals(evals: List[List[Metric]], method: str, criterion: str, data_name: str, results_path: str):
-    max_k = len(evals[0])
+    max_k = min(len(eval_row) for eval_row in evals)
+    print(f"all evaluations truncated to {max_k} first values")
     mean_f1 = []
 
     for k in range(max_k):
-        f1s_k = [eval[k]["f1"] for eval in evals]
+        f1s_k = [eval_row[k]["f1"] for eval_row in evals]
         mean_f1.append(np.array(f1s_k).mean())
 
     max_f1 = np.max(np.array(mean_f1))
