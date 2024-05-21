@@ -112,8 +112,11 @@ def report_evals(evals: List[List[Metric]], method: str, criterion: str, data_na
         f1s_k = [eval_row[k]["f1"] for eval_row in evals]
         mean_f1.append(np.array(f1s_k).mean())
 
-    max_f1 = np.max(np.array(mean_f1))
-    print(f"Max F1 for edges: {max_f1}")
+    mean_f1 = np.array(mean_f1)
+    best_k = np.argmax(mean_f1)
+    max_f1 = mean_f1[best_k]
+    print(f"Max F1 : {max_f1}")
+    print(f"best k : {best_k}")
 
     fprs = [np.array([cas_eval[k]["fpr"] for cas_eval in evals]).mean() for k in range(max_k)]
     tprs = [np.array([cas_eval[k]["tpr"] for cas_eval in evals]).mean() for k in range(max_k)]
@@ -121,5 +124,5 @@ def report_evals(evals: List[List[Metric]], method: str, criterion: str, data_na
 
     # Report f1 values for each cascade.
     print("F1 values for each cascade:")
-    f1_values = [float(np.max(np.array([metric["f1"] for metric in cas_eval]))) for cas_eval in evals]
+    f1_values = [cas_eval[best_k]["f1"] for cas_eval in evals]
     print(f1_values)
